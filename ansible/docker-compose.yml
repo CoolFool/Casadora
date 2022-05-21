@@ -1,0 +1,263 @@
+version: "3.8"
+
+services:
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.middlewares.auth.basicauth.usersfile=/basicauth/traefikUsersFile"
+      - "traefik.http.routers.dashboard-secure.entrypoints=websecure"
+      - "traefik.http.routers.dashboard-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.dashboard-secure.rule=Host(`${traefik_sub_domain}.${base_domain}`)"
+      - "traefik.http.routers.dashboard-secure.middlewares=auth"
+      - "traefik.http.routers.dashboard-secure.tls=true"
+      - "traefik.http.routers.dashboard-secure.service=api@internal"
+
+    command: 
+      #- --log.level=DEBUG
+      #- --accesslog=true 
+      - --api
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.tls.domains[0].main=${base_domain:?base domain not set}
+      - --entrypoints.websecure.http.tls.domains[0].sans=*.${base_domain:?base domain not set}
+      - --entrypoints.websecure.http.tls.certresolver=letsencrypt
+
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare
+      - --certificatesresolvers.letsencrypt.acme.email=${lets_encrypt_email:?lets encrypt email not set}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+
+      - --metrics.prometheus=true
+      - --metrics.prometheus.addRoutersLabels=true
+    ports:
+      - 80:80
+      - 443:443
+    environment:
+      - CLOUDFLARE_DNS_API_TOKEN=${cf_api_token:?cloudflare api token not found}
+    volumes:
+      - ./letsencrypt:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro 
+      - type: bind
+        source: ./traefikUsersFile
+        target: /basicauth/traefikUsersFile
+    networks:
+      - traefik-public
+    restart: unless-stopped
+      
+
+  heimdall:
+      image: lscr.io/linuxserver/heimdall
+      container_name: heimdall
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.heimdall.entrypoints=websecure
+        - traefik.http.routers.heimdall.rule=Host(`${heimdall_sub_domain}.${base_domain}`)
+        - traefik.http.services.heimdall.loadbalancer.server.port=80
+        - traefik.http.routers.heimdall.tls.certresolver=letsencrypt
+
+      environment:
+        - PUID=1000
+        - PGID=1000
+        - TZ=Asia/Kolkata
+
+      volumes:
+        - ./config:/config
+      restart: unless-stopped
+      networks:
+        - traefik-public
+
+  adguardhome:
+    image: adguard/adguardhome
+    container_name: adguardhome
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.adguard.rule=Host(`${adguard_sub_domain}.${base_domain}`)
+      - traefik.http.routers.adguard.service=adguard
+      - traefik.http.routers.adguard.entrypoints=websecure
+      - traefik.http.services.adguard.loadbalancer.server.port=80
+      - traefik.http.routers.adguard.tls.certresolver=letsencrypt
+
+      - traefik.http.routers.adguard-doh.rule=Host(`${adguard_sub_domain}.${base_domain}`) && PathPrefix(`/dns-query`)
+      - traefik.http.routers.adguard-doh.service=adguard-doh
+      - traefik.http.routers.adguard-doh.entrypoints=websecure
+      - traefik.http.routers.adguard-doh.tls.certresolver=letsencrypt
+      - traefik.http.services.adguard-doh.loadbalancer.server.port=443
+
+      - traefik.docker.network=traefik-public
+    ports:
+      - 53:53/tcp
+      - 53:53/udp
+      - 853:853/tcp
+    volumes:
+      - ./workdir:/opt/adguardhome/work
+      - ./confdir:/opt/adguardhome/conf
+    networks:
+      - traefik-public
+      - adguard-net
+    restart: unless-stopped
+
+  wg-easy:
+      image: weejewel/wg-easy
+      container_name: wg-easy
+      labels:
+          - traefik.enable=true
+          - traefik.http.routers.wireguard.rule=Host(`${wireguard_sub_domain}.${base_domain}`)
+          - traefik.http.routers.wireguard.entrypoints=websecure
+          - traefik.http.services.wireguard.loadbalancer.server.port=51821
+          - traefik.http.routers.wireguard.tls.certresolver=letsencrypt
+
+      environment:
+        # ⚠️ Required:
+        # Change this to your host's public address
+        - WG_HOST=${wireguard_host_ip:?wireguard host ip not set}
+        # Optional:
+        - PASSWORD=${wireguard_password:?wireguard password not set}
+        # - WG_PORT=51820
+        # - WG_DEFAULT_ADDRESS=10.8.0.x
+        - WG_DEFAULT_DNS=1.1.1.1
+        # - WG_ALLOWED_IPS=192.168.15.0/24, 10.0.1.0/24
+        
+      volumes:
+        - .:/etc/wireguard
+      ports:
+        - "51820:51820/udp"
+
+      restart: unless-stopped
+      cap_add:
+        - NET_ADMIN
+        - SYS_MODULE
+      sysctls:
+        - net.ipv4.ip_forward=1
+        - net.ipv4.conf.all.src_valid_mark=1
+      networks:
+        - traefik-public
+
+  portainer:
+      image: portainer/portainer-ce:latest
+      container_name: portainer
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.portainer.rule=Host(`${portainer_sub_domain}.${base_domain}`)
+        - traefik.http.routers.portainer.entrypoints=websecure
+        - traefik.http.services.portainer.loadbalancer.server.port=9000
+        - traefik.http.routers.portainer.tls.certresolver=letsencrypt
+
+      restart: unless-stopped
+      security_opt:
+        - no-new-privileges:true
+      volumes:
+        - /etc/localtime:/etc/localtime:ro
+        - /var/run/docker.sock:/var/run/docker.sock:ro
+        - ./portainer-data:/data
+      networks:
+        - traefik-public
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.grafana.rule=Host(`${grafana_sub_domain}.${base_domain}`)
+      - traefik.http.routers.grafana.entrypoints=websecure
+      - traefik.http.services.grafana.loadbalancer.server.port=3000
+      - traefik.http.routers.grafana.tls.certresolver=letsencrypt
+      - traefik.docker.network=traefik-public
+    #ports:
+    #  - 3000:3000
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - traefik-public
+      - monitoring-net
+    restart: unless-stopped
+  
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    #ports:
+    #  - "9090:9090"
+    volumes:
+      - /etc/prometheus:/etc/prometheus
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    networks:
+      - monitoring-net
+
+
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node_exporter
+    privileged: true
+    expose:
+      - 9100
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.systemd'
+      - '--collector.processes'
+    networks:
+      - monitoring-net
+
+  cadvisor:
+    image: zcube/cadvisor:latest
+    container_name: cadvisor
+#   ports:
+#     - "8888:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg
+    networks:
+      - monitoring-net
+
+  adguard_exporter:
+    image: ebrianne/adguard-exporter:latest
+    container_name: adguard_exporter
+    restart: always
+#   ports:
+#      - "9617:9617"
+    environment:
+      - adguard_protocol=http
+      - adguard_hostname=adguardhome
+      - adguard_username=${adguard_username:?adguard username not set}
+      - adguard_password=${adguard_password:?adguard password not set}
+      - adguard_port=80
+      - server_port=9617
+      - interval=10s
+      - log_limit=10000
+    networks:
+      - adguard-net
+      - monitoring-net
+  
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  monitoring-net:
+    name: monitoring-net
+  adguard-net:
+    name: adguard-net
+  traefik-public:
+    name: traefik-public  

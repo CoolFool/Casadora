@@ -1,0 +1,16 @@
+terraform/*.pem
+terraform/.terraform
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/*.tfvars
+!terraform/terraform.example.tfvars
+
+ansible/test*
+ansible/setup.env
+ansible/*.test
+ansible/*.bak
+ansible/traefikUsersFile
+ansible/AdGuardHome.yaml
+ansible/confdir/AdGuardHome.yaml
+logo.svg
+

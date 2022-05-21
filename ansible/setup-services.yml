@@ -1,0 +1,171 @@
+- name: Casadora Setup Services
+  hosts: all
+  become: yes
+  vars:
+    - user: ubuntu
+    - traefik_username : "{{lookup('ansible.builtin.env','traefik_username')}}"
+    - traefik_password : "{{lookup('ansible.builtin.env','traefik_password')}}"
+    - lets_encrypt_email : "{{lookup('ansible.builtin.env','lets_encrypt_email')}}"
+    - base_domain : "{{lookup('ansible.builtin.env','base_domain')}}"
+    - cf_api_token : "{{lookup('ansible.builtin.env','cf_api_token')}}"
+    - traefik_sub_domain : "{{lookup('ansible.builtin.env','traefik_sub_domain')}}"
+    - adguard_sub_domain : "{{lookup('ansible.builtin.env','adguard_sub_domain')}}"
+    - adguard_username : "{{lookup('ansible.builtin.env','adguard_username')}}"
+    - adguard_password : "{{lookup('ansible.builtin.env','adguard_password')}}"
+    - grafana_sub_domain : "{{lookup('ansible.builtin.env','grafana_sub_domain')}}"
+    - heimdall_sub_domain : "{{lookup('ansible.builtin.env','heimdall_sub_domain')}}"
+    - wireguard_sub_domain : "{{lookup('ansible.builtin.env','wireguard_sub_domain')}}"
+    - wireguard_password : "{{lookup('ansible.builtin.env','wireguard_password')}}"
+    - wireguard_host_ip : "{{lookup('ansible.builtin.env','wireguard_host_ip')}}"
+    - portainer_sub_domain : "{{lookup('ansible.builtin.env','portainer_sub_domain')}}"
+    - adguard_username : "{{lookup('ansible.builtin.env','adguard_username')}}"
+    - adguard_password : "{{lookup('ansible.builtin.env','adguard_password')}}"
+
+  tasks:
+    - name: Create Prometheus config directory
+      file:
+        path: /etc/prometheus/
+        state: directory
+        owner: "{{user}}"
+        group: "{{user}}"
+
+    - name: Copy Prometheus.yml
+      ansible.builtin.copy:
+        src: etc/prometheus/prometheus.yml
+        dest: /etc/prometheus/prometheus.yml
+        owner: "{{user}}"
+        group: "{{user}}"
+
+    - name: Create resolved.conf.d 
+      file:
+        path: /etc/systemd/resolved.conf.d
+        state: directory
+        owner: root
+        group: root
+    
+    - name: Copy adguardhome.conf
+      ansible.builtin.copy:
+        src: etc/systemd/resolved.conf.d/adguardhome.conf
+        dest: /etc/systemd/resolved.conf.d/adguardhome.conf
+        owner: root
+        group: root
+     
+    - name: Rename resolve.conf to resolve.conf.backup
+      command: mv /etc/resolv.conf /etc/resolv.conf.backup
+    
+    - name: Create symbolic link 
+      file:
+        src: "/run/systemd/resolve/resolv.conf"
+        dest: "/etc/resolv.conf"
+        state: link
+    
+    - name: Restart systemd-resolved
+      ansible.builtin.systemd:
+        state: restarted
+        daemon_reload: yes
+        name: systemd-resolved
+
+    - name: Create confdir if not exists
+      file:
+        path: /home/{{user}}/confdir
+        state: directory
+        owner: "{{user}}"
+        group: "{{user}}"
+
+    - name: Copy AdGuardHome.template.yaml to remote
+      ansible.builtin.copy:
+        src: confdir/AdGuardHome.template.yaml
+        dest: /home/{{user}}/confdir
+        owner: "{{user}}"
+        group: "{{user}}"
+
+    - name: Copy docker-compose.yml to remote
+      ansible.builtin.copy:
+        src: docker-compose.yml
+        dest: /home/{{user}}/
+        owner: "{{user}}"
+        group: "{{user}}"
+    
+    - name: Copy setup.sh to remote
+      ansible.builtin.copy:
+        src: setup.sh
+        dest: /home/{{user}}/
+        owner: "{{user}}"
+        group: "{{user}}"
+        mode: u=rwx,g=rx,o=r 
+
+    - name: check if setup.env exists on local
+      vars:
+        ansible_become: no
+      local_action: stat path={{playbook_dir}}/setup.env
+      register: setup_env
+
+    - name: Create setup.env if not exists from environment variables
+      ansible.builtin.copy:
+        dest: /home/{{user}}/setup.env
+        content: |
+          traefik_username={{traefik_username}}
+          traefik_password={{traefik_password}}
+          lets_encrypt_email={{lets_encrypt_email}}
+          base_domain={{base_domain}}
+          cf_api_token={{cf_api_token}}
+          traefik_sub_domain={{traefik_sub_domain}}
+          adguard_sub_domain={{adguard_sub_domain}}
+          adguard_username={{adguard_username}}
+          adguard_password={{adguard_password}}
+          grafana_sub_domain={{grafana_sub_domain}}
+          heimdall_sub_domain={{heimdall_sub_domain}}
+          wireguard_sub_domain={{wireguard_sub_domain}}
+          wireguard_password={{wireguard_password}}
+          wireguard_host_ip={{wireguard_host_ip}}
+          portainer_sub_domain={{portainer_sub_domain}}
+        owner: "{{user}}"
+        group: "{{user}}"
+      when: not setup_env.stat.exists
+
+    - name: copy setup.env if exists
+      ansible.builtin.copy:
+        src: setup.env
+        dest: /home/{{user}}/
+        owner: "{{user}}"
+        group: "{{user}}"
+      when: setup_env.stat.exists
+
+    - name: Run setup.sh
+      args:
+        chdir: /home/{{user}}/
+      ansible.builtin.script: "setup.sh"
+      
+    - name: docker compose up (with setup.env)
+      args:
+        chdir: /home/{{user}}/
+      ansible.builtin.shell: "docker-compose --env-file setup.env up --detach"
+      when: setup_env.stat.exists
+        
+    - name: docker compose up (without setup.env)
+      args:
+        chdir: /home/{{user}}/
+      environment:
+         traefik_username : "{{traefik_username}}"
+         traefik_password : "{{traefik_password}}"
+         lets_encrypt_email : "{{lets_encrypt_email}}"
+         base_domain : "{{base_domain}}"
+         cf_api_token : "{{cf_api_token}}"
+         traefik_sub_domain : "{{traefik_sub_domain}}"
+         adguard_sub_domain : "{{adguard_sub_domain}}"
+         adguard_username : "{{adguard_username}}"
+         adguard_password : "{{adguard_password}}"
+         grafana_sub_domain : "{{grafana_sub_domain}}"
+         heimdall_sub_domain : "{{heimdall_sub_domain}}"
+         wireguard_sub_domain : "{{wireguard_sub_domain}}"
+         wireguard_password : "{{wireguard_password}}"
+         wireguard_host_ip : "{{wireguard_host_ip}}"
+         portainer_sub_domain : "{{portainer_sub_domain}}"
+      ansible.builtin.shell: "docker-compose up --detach"
+      when: not setup_env.stat.exists
+    
+    
+    
+
+
+

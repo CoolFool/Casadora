@@ -1,0 +1,64 @@
+- name: Casadora Housekeeping
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update system
+      apt:
+        upgrade: dist
+    - name: Install Required Dependencies and Packages
+      apt:
+        name: "{{item}}"
+        state: present
+        update_cache: yes
+      loop:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg-agent
+        - software-properties-common
+        - apache2-utils #used for htpasswd generation
+    - name: add GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: add docker repository to apt
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu bionic stable
+        state: present
+
+    - name: install docker
+      apt:
+        name: "{{item}}"
+        state: latest
+        update_cache: yes
+      loop:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+       
+    - name: check if docker started
+      service:
+        name: docker
+        state: started
+        enabled: yes
+    - name: Create docker group
+      group:
+        name: docker
+        state: present
+      #become: yes
+
+    - name: Add user to the docker group
+      user:
+        name: "{{ item }}"
+        groups: docker
+        append: yes
+      with_items: "ubuntu"
+     # become: yes
+
+    - name: Install docker-compose
+      command: "curl -SL https://github.com/docker/compose/releases/download/v2.5.0/docker-compose-linux-aarch64 -o /usr/local/bin/docker-compose"
+    
+    - name: Make docker-compose executable
+      command: "sudo chmod +x /usr/local/bin/docker-compose"
+ 
