@@ -2,8 +2,8 @@ bind_host: 0.0.0.0
 bind_port: 80
 beta_bind_port: 0
 users:
-- name: ${AGH_USERNAME} #your adguard username 
-  password: ${AGH_PASSWORD}  #your adguard password created using echo $(htpasswd -nB -C 10 username)
+- name: ${AGH_USERNAME} #generated using setup.sh
+  password: ${AGH_PASSWORD} #generated using setup.sh
 auth_attempts: 5
 block_auth_min: 15
 http_proxy: ""
@@ -73,7 +73,7 @@ dns:
   local_ptr_upstreams: []
 tls:
   enabled: true
-  server_name: adguard.arishem.systems
+  server_name: ${ADGUARD_DOMAIN} #generated using setup.sh
   force_https: false
   port_https: 443
   port_dns_over_tls: 853
@@ -84,8 +84,8 @@ tls:
   strict_sni_check: false
   certificate_chain: ""
   private_key: ""
-  certificate_path: ""
-  private_key_path: ""
+  certificate_path: ${ADGUARD_CRT_PATH} #generated using setup.sh
+  private_key_path: ${ADGUARD_PRIV_PATH} #generated using setup.sh
 filters:
 - enabled: true
   url: https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt

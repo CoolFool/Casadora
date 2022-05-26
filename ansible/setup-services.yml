@@ -163,9 +163,4 @@
          portainer_sub_domain : "{{portainer_sub_domain}}"
       ansible.builtin.shell: "docker-compose up --detach"
       when: not setup_env.stat.exists
-    
-    
-    
-
-
-
+      

@@ -5,14 +5,15 @@ services:
     image: traefik:latest
     container_name: traefik
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.middlewares.auth.basicauth.usersfile=/basicauth/traefikUsersFile"
-      - "traefik.http.routers.dashboard-secure.entrypoints=websecure"
-      - "traefik.http.routers.dashboard-secure.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.dashboard-secure.rule=Host(`${traefik_sub_domain}.${base_domain}`)"
-      - "traefik.http.routers.dashboard-secure.middlewares=auth"
-      - "traefik.http.routers.dashboard-secure.tls=true"
-      - "traefik.http.routers.dashboard-secure.service=api@internal"
+      - traefik.enable=true
+      - traefik.http.middlewares.auth.basicauth.usersfile=/basicauth/traefikUsersFile
+      - traefik.http.routers.dashboard-secure.entrypoints=websecure
+      - traefik.http.routers.dashboard-secure.tls.certresolver=letsencrypt
+      - traefik.http.routers.dashboard-secure.rule=Host(`${traefik_sub_domain}.${base_domain}`)
+      - traefik.http.routers.dashboard-secure.middlewares=auth
+      - traefik.http.routers.dashboard-secure.tls=true
+      - traefik.http.routers.dashboard-secure.service=api@internal
+      - traefik.docker.network=traefik-public
 
     command: 
       #- --log.level=DEBUG
@@ -35,6 +36,8 @@ services:
 
       - --metrics.prometheus=true
       - --metrics.prometheus.addRoutersLabels=true
+
+      - --serversTransport.insecureSkipVerify=true
     ports:
       - 80:80
       - 443:443
@@ -48,8 +51,24 @@ services:
         target: /basicauth/traefikUsersFile
     networks:
       - traefik-public
+      - monitoring-net
     restart: unless-stopped
       
+  traefik-certs-dumper:
+    image: ldez/traefik-certs-dumper:latest
+    container_name: traefik-certs-dumper
+    depends_on:
+      - traefik
+    entrypoint: sh -c '
+      apk add jq
+      ; while ! [ -e /data/acme.json ]
+      || ! [ `jq ".[] | .Certificates | length" /data/acme.json` != 0 ]; do
+      sleep 1
+      ; done
+      && traefik-certs-dumper file --version v2 --watch
+      --source /data/acme.json --dest /data/certs'
+    volumes:
+      - ./letsencrypt:/data
 
   heimdall:
       image: lscr.io/linuxserver/heimdall
@@ -75,6 +94,9 @@ services:
   adguardhome:
     image: adguard/adguardhome
     container_name: adguardhome
+    depends_on:
+      - traefik-certs-dumper
+
     labels:
       - traefik.enable=true
       - traefik.http.routers.adguard.rule=Host(`${adguard_sub_domain}.${base_domain}`)
@@ -87,6 +109,7 @@ services:
       - traefik.http.routers.adguard-doh.service=adguard-doh
       - traefik.http.routers.adguard-doh.entrypoints=websecure
       - traefik.http.routers.adguard-doh.tls.certresolver=letsencrypt
+      - traefik.http.services.adguard-doh.loadbalancer.server.scheme=https
       - traefik.http.services.adguard-doh.loadbalancer.server.port=443
 
       - traefik.docker.network=traefik-public
@@ -97,6 +120,7 @@ services:
     volumes:
       - ./workdir:/opt/adguardhome/work
       - ./confdir:/opt/adguardhome/conf
+      - ./letsencrypt:/letsencrypt
     networks:
       - traefik-public
       - adguard-net
@@ -228,11 +252,12 @@ services:
       - /dev/kmsg
     networks:
       - monitoring-net
+    restart: unless-stopped
 
   adguard_exporter:
     image: ebrianne/adguard-exporter:latest
     container_name: adguard_exporter
-    restart: always
+    restart: unless-stopped
 #   ports:
 #      - "9617:9617"
     environment:
