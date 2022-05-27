@@ -62,6 +62,8 @@
 - ### Install Ansible
   - [Install ansible](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) for your operating system
 
+<p align="right">(<a href="#top">back to top</a>)</p>
+
 ## Setup
 
 - ### Clone the repo
@@ -104,6 +106,8 @@
       2.  Add your SSH private key to the ssh-agent. If you created your key with a different name, or if you are adding an existing key that has a different name, replace id_ed25519 in the command with the name of your private key file.
 
           `$ ssh-add ~/.ssh/id_ed25519`
+          
+ <p align="right">(<a href="#top">back to top</a>)</p>
 
   - #### Configure Oracle Cloud
     1.  | Select Account|
@@ -121,6 +125,8 @@
     4.  | Copy the API Information|
         | ------------ | 
         |![Copy the API Information](static/oracle/copy_the_info.png) |
+        
+   <p align="right">(<a href="#top">back to top</a>)</p>
 
   - #### Configure Cloudflare
     1.  | Select Profile|
@@ -146,6 +152,8 @@
     6.  | Copy and Save the API Token|
         | ------------ | 
         |![Copy and Save the API Token](static/cloudflare/save_token.png) |
+       
+ <p align="right">(<a href="#top">back to top</a>)</p>
 
   - #### Set Terraform Variables
 
@@ -183,6 +191,8 @@
         5. `ansible_adguard_username` - Username to be used for adguard
         6. `ansible_adguard_password` - Password to be used for adguard
         7. `ansible_wireguard_password`  - Password to be used for wireguard dashboard
+ 
+  <p align="right">(<a href="#top">back to top</a>)</p>
 
 - ### Ansible
   - #### Auto-Run Playbook
