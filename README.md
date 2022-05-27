@@ -23,6 +23,7 @@
 - The services deployed are as follows:
 
   1. [Traefik](https://github.com/traefik/traefik)
+  2. [Traefik-Certs-Dumper](https://github.com/ldez/traefik-certs-dumper)
   2. [AdGuardHome](https://github.com/AdguardTeam/AdGuardHome)
   3. [Wg-Easy](https://github.com/WeeJeWel/wg-easy)
   4. [Portainer](https://github.com/portainer/portainer)
@@ -211,12 +212,15 @@ To create the instance and deploy the services run the following commands inside
   3. [Node Exporter](https://grafana.com/grafana/dashboards/1860)
   4. [Traefik Metrics](https://grafana.com/grafana/dashboards/12250)
   <br> Ofcourse you can use any dashboard which supports the deployed [exporters](#introduction)
-- If you want to take down the docker services from within the server through ssh use the command `docker-compose --env-file setup.env down`,while for starting use the command docker-compose --env-file setup.env up --detach
+- If you want to take down the docker services from within the server through ssh use the command `docker-compose --env-file setup.env down` while for starting use the command `docker-compose --env-file setup.env up --detach`
 - The `setup.env` file is auto-generated in `/home/ubuntu/` with the required values through ansible
 - For Portainer and Grafana user should be created manually as prompted by the services at first use.
 - Services should be manually added to heimdall after verifying if everything works correctly
 - Manually running ansible playbook will erase adguard logs and configuration
+- `traefik-certs-dumper` is required cause traefik uses acme.json as certificate storage which is not compatible with adguardhome
+- The SSL Certificates are stored in `/home/ubuntu/letsencrypt/certs/`
 - DNS-over-HTTPS endpoint for AdGuardHome is `https://adguard.example.com/dns-query` (replace `example.com` with your domain)
+- If DNS-over-HTTPS doesn't work setup portainer and restart `traefik-certs-dumper` and `adguardhome` containers
 - DNS-over-TLS endpoint for AdGuardHome is `adguard.example.com` (replace `example.com` with your domain)
 - AdGuardHome is deployed with few filters,if it causes problems with websites remove it from the list which is found at Adguard Dashboard:  **Filters** -> **DNS blocklists**  
 
