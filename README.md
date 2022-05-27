@@ -64,6 +64,12 @@
 
 ## Setup
 
+- ### Clone the repo
+  - Execute the following command in terminal
+      
+      `git clone https://github.com/CoolFool/Casadora.git`
+  - Change directory to **Casadora** with `cd Casadora`
+
 - ### Terraform
 
   - #### Generate SSH Key (If you dont have one)
