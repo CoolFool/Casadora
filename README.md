@@ -107,9 +107,10 @@
 
           `$ ssh-add ~/.ssh/id_ed25519`
           
- <p align="right">(<a href="#top">back to top</a>)</p>
+  <p align="right">(<a href="#top">back to top</a>)</p>
 
   - #### Configure Oracle Cloud
+
     1.  | Select Account|
         | ------------ | 
         |![Select Account](static/oracle/select_account.png) |
@@ -125,10 +126,12 @@
     4.  | Copy the API Information|
         | ------------ | 
         |![Copy the API Information](static/oracle/copy_the_info.png) |
+
         
-   <p align="right">(<a href="#top">back to top</a>)</p>
+  <p align="right">(<a href="#top">back to top</a>)</p>
 
   - #### Configure Cloudflare
+  
     1.  | Select Profile|
         | ------------ | 
         |![Select Profile](static/cloudflare/profile.png) |
@@ -153,7 +156,7 @@
         | ------------ | 
         |![Copy and Save the API Token](static/cloudflare/save_token.png) |
        
- <p align="right">(<a href="#top">back to top</a>)</p>
+  <p align="right">(<a href="#top">back to top</a>)</p>
 
   - #### Set Terraform Variables
 
