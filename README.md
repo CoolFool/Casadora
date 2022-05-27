@@ -99,7 +99,7 @@
 
           `$ ssh-add ~/.ssh/id_ed25519`
 
-  - #### Oracle Cloud
+  - #### Configure Oracle Cloud
     1.  | Select Account|
         | ------------ | 
         |![Select Account](static/oracle/select_account.png) |
@@ -116,7 +116,7 @@
         | ------------ | 
         |![Copy the API Information](static/oracle/copy_the_info.png) |
 
-  - #### Cloudflare
+  - #### Configure Cloudflare
     1.  | Select Profile|
         | ------------ | 
         |![Select Profile](static/cloudflare/profile.png) |
