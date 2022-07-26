@@ -24,10 +24,10 @@
 
   1. [Traefik](https://github.com/traefik/traefik)
   2. [Traefik-Certs-Dumper](https://github.com/ldez/traefik-certs-dumper)
-  2. [AdGuardHome](https://github.com/AdguardTeam/AdGuardHome)
-  3. [Wg-Easy](https://github.com/WeeJeWel/wg-easy)
-  4. [Portainer](https://github.com/portainer/portainer)
-  5. [Prometheus](https://github.com/prometheus/prometheus)
+  3. [AdGuardHome](https://github.com/AdguardTeam/AdGuardHome)
+  4. [Wg-Easy](https://github.com/WeeJeWel/wg-easy)
+  5. [Portainer](https://github.com/portainer/portainer)
+  6. [Prometheus](https://github.com/prometheus/prometheus)
 
         - Exporters for Prometheus
             1. [Node-Exporter](https://github.com/prometheus/node_exporter)
@@ -35,7 +35,8 @@
             3. [Adguard Exporter](https://github.com/ebrianne/adguard-exporter)
             4. [Traefik Exporter (Directly enabled through traefik)](https://doc.traefik.io/traefik/observability/metrics/prometheus/)
 
-  6. [Grafana](https://github.com/grafana/grafana)
+  7. [Grafana](https://github.com/grafana/grafana)
+  8. [Heimdall](https://github.com/linuxserver/Heimdall)
 
 - The services and their configurations can be changed by editing the `docker-compose.yml` file inside the `ansible` directory
 
